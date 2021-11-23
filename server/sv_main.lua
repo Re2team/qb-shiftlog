@@ -14,10 +14,10 @@ local currentjob = {}
 
 
 local dcname = "Shift Logger" -- bot's name
-local http = "https://discord.com/api/webhooks/911895867877900329/s4BtsyXHbgH6Lcc98pkqHe1w9F-gMNXiPlsMOaNCaFZ8v782S4gP9uoCz2X4ihK9FnS-" -- webhook for police
-local httpAmbulance = "https://discord.com/api/webhooks/911895867877900329/s4BtsyXHbgH6Lcc98pkqHe1w9F-gMNXiPlsMOaNCaFZ8v782S4gP9uoCz2X4ihK9FnS-" -- webhook for ems (you can add as many as you want)
-local httpMechanic = "https://discord.com/api/webhooks/911895867877900329/s4BtsyXHbgH6Lcc98pkqHe1w9F-gMNXiPlsMOaNCaFZ8v782S4gP9uoCz2X4ihK9FnS-"
-local avatar = "https://discord.com/api/webhooks/911895867877900329/s4BtsyXHbgH6Lcc98pkqHe1w9F-gMNXiPlsMOaNCaFZ8v782S4gP9uoCz2X4ihK9FnS-" -- bot's avatar
+local http = Config.policeWebhook -- webhook for police
+local httpAmbulance = Config.ambulanceWebhook -- webhook for ems (you can add as many as you want)
+local httpMechanic = Config.mechanicWebhook
+local avatar = "" -- bot's avatar
 
 function DiscordLog(name, message, color, job)
     local connect = {
