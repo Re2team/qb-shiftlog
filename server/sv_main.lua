@@ -2,13 +2,17 @@ local QBCore = exports['qb-core']:GetCoreObject() -- Grabs our core object
 
 local timers = { -- if you want more job shifts add table entry here same as the examples below
     ambulance = {
-        {} -- don't edit inside
     },
     police = {
-        {} -- don't edit inside
+    },
+    mechanic = {
     },
     -- fbi = {}
 }
+
+local currentjob = {}
+
+
 local dcname = "Shift Logger" -- bot's name
 local http = "https://discord.com/api/webhooks/911895867877900329/s4BtsyXHbgH6Lcc98pkqHe1w9F-gMNXiPlsMOaNCaFZ8v782S4gP9uoCz2X4ihK9FnS-" -- webhook for police
 local httpAmbulance = "https://discord.com/api/webhooks/911895867877900329/s4BtsyXHbgH6Lcc98pkqHe1w9F-gMNXiPlsMOaNCaFZ8v782S4gP9uoCz2X4ihK9FnS-" -- webhook for ems (you can add as many as you want)
@@ -40,22 +44,26 @@ AddEventHandler("qb-shiftlog:userjoined", function(job)
     local id = source
     local xPlayer = QBCore.Functions.GetPlayer(id)
 
-    table.insert(timers[job], {id = id, identifier = xPlayer.identifier, name = xPlayer.name, time = os.time(), date = os.date("%d/%m/%Y %X")})
+    if job.onduty == true then
+        table.insert(timers[job.name], {id = id, citizenid = xPlayer.citizenid, name = xPlayer.charinfo.firstname.." "..xPlayer.charinfo.lastname, time = os.time(), date = os.date("%d/%m/%Y %X")})
+    end
 end)
-
 RegisterServerEvent("qb-shiftlog:jobchanged")
-AddEventHandler("qb-shiftlog:jobchanged", function(old, new, method)
-    local xPlayer = QBCore.Functions.GetPlayer(source)
+AddEventHandler("qb-shiftlog:jobchanged", function(old, new, method,src)
+    if src == nil then
+        src = source
+    end
+    local xPlayer = QBCore.Functions.GetPlayer(src)
+    xPlayer=xPlayer.PlayerData
     local header = nil
     local color = nil
-
-    if old == "police" then
+    if old.name == "police" then
         header = "Police Shift" -- Header
         color = 3447003 -- Color
-    elseif old == "ambulance" then
+    elseif old.name == "ambulance" then
         header = "EMS Shift"
         color = 15158332
-    elseif old == "mechanic" then
+    elseif old.name == "mechanic" then
         header = "Mechanic Shift"
         color = 13400320
     --elseif job == "fbi" then
@@ -63,10 +71,10 @@ AddEventHandler("qb-shiftlog:jobchanged", function(old, new, method)
         --color = 3447003
     end
     if method == 1 then
-        for i = 1, #timers[old], 1 do
-            if timers[old][i].identifier == xPlayer.identifier then
-                local duration = os.time() - timers[old][i].time
-                local date = timers[old][i].date
+        for i,v in ipairs(timers[old.name]) do
+            if v.citizenid == xPlayer.citizenid then
+                local duration = os.time() - v.time
+                local date = v.date
                 local timetext = nil
 
                 if duration > 0 and duration < 60 then
@@ -76,23 +84,42 @@ AddEventHandler("qb-shiftlog:jobchanged", function(old, new, method)
                 elseif duration >= 3600 then
                     timetext = tostring(math.floor(duration / 3600).." hours, "..tostring(math.floor(math.fmod(duration, 3600)) / 60)).." minutes"
                 end
-                DiscordLog(header , "Steam Name: **"..timers[old][i].name.."**\nIdentifier: **"..timers[old][i].identifier.."**\n Shift duration: **__"..timetext.."__**\n Start date: **"..date.."**\n End date: **"..os.date("%d/%m/%Y %X").."**", color, old)
-                table.remove(timers[old], i)
+                DiscordLog(header , "Name: **"..v.name.."**\ncitizenid: **"..v.citizenid.."**\n Shift duration: **__"..timetext.."__**\n Start date: **"..date.."**\n End date: **"..os.date("%d/%m/%Y %X").."**", color, old.name)
+                table.remove(timers[old.name], i)
                 break
             end
         end
     end
-    if not (timers[new] == nil) then
-        for t, l in pairs(timers[new]) do
-            if l.id == xPlayer.source then
-                table.remove(table[new], l)
+    if not (timers[new.name] == nil) then
+        for t, l in pairs(timers[new.name]) do
+            if l.citizenid == xPlayer.citizenid then
+                table.remove(timers[new.name], t)
             end
         end
     end
-    if new == "police" or new == "ambulance" then
-        table.insert(timers[new], {id = xPlayer.source, identifier = xPlayer.identifier, name = xPlayer.name, time = os.time(), date = os.date("%d/%m/%Y %X")})
+    if new.name == "police" or new.name == "ambulance" or new.name =="mechanic" then
+        table.insert(timers[new.name], {citizenid = xPlayer.citizenid, name = xPlayer.charinfo.firstname.." "..xPlayer.charinfo.lastname, time = os.time(), date = os.date("%d/%m/%Y %X")})
     end
 end)
+
+
+
+RegisterNetEvent('QBCore:ToggleDuty', function()
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    Player=Player.PlayerData
+    local job = Player.job
+    if job.name == "police" or job.name == "ambulance" or job.name == "mechanic" then -- job's name here
+        if job.onduty == false then
+            TriggerEvent("qb-shiftlog:jobchanged", currentjob, job, 1, src)
+        else
+            TriggerEvent("qb-shiftlog:jobchanged", currentjob, job, 0, src)  
+        end
+           
+    end
+    currentjob = job
+end)
+
 
 AddEventHandler("playerDropped", function(reason)
     local id = source
@@ -112,6 +139,12 @@ AddEventHandler("playerDropped", function(reason)
                 elseif k == "ambulance" then
                     header = "EMS Shift"
                     color = 15158332
+                elseif old.name == "mechanic" then
+                    header = "Mechanic Shift"
+                    color = 13400320
+                --elseif job == "fbi" then
+                    --header = "FBI Shift"
+                    --color = 3447003
                 end
                 if duration > 0 and duration < 60 then
                     timetext = tostring(math.floor(duration)).." seconds"
@@ -120,7 +153,7 @@ AddEventHandler("playerDropped", function(reason)
                 elseif duration >= 3600 then
                     timetext = tostring(math.floor(duration / 3600).." hours, "..tostring(math.floor(math.fmod(duration, 3600)) / 60)).." minutes"
                 end
-                DiscordLog(header, "Steam Name: **"..timers[k][n].name.."**\nIdentifier: **"..timers[k][n].identifier.."**\n Shift duration: **__"..timetext.."__**\n Start date: **"..date.."**\n End date: **"..os.date("%d/%m/%Y %X").."**", color, k)
+                DiscordLog(header, "Name: **"..timers[k][n].name.."**\ncitizenid: **"..timers[k][n].identifier.."**\n Shift duration: **__"..timetext.."__**\n Start date: **"..date.."**\n End date: **"..os.date("%d/%m/%Y %X").."**", color, k)
                 table.remove(timers[k], n)
                 return
             end
